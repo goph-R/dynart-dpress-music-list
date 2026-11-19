@@ -49,6 +49,17 @@ scrolling with the window - which is what the standalone MusicList looked like. 
 player is a section of the page, in the theme's layout. A theme answers the template with a
 `dpress/content/page-template-music-player.phtml` of its own.
 
+**As the front page**: set **Settings > Front page** to the page's address, `/music`. From Dpress
+0.97.0 the page is then rendered at `/` itself - the site's address is the player's, share links
+are `/?track=<slug>`, and the page's own address sends a visitor there. That is what a site that
+is only a player wants, and it keeps the links of a standalone MusicList that lived at the root
+working.
+
+**Uploading in the admin** is an ordinary media upload, so PHP's limits apply: with the stock
+`upload_max_filesize = 2M` every mp3 is refused. Raise it and `post_max_size` in php.ini, or for
+this site alone in a `public/.user.ini`, and `media.max_size` in `dpress.ini` for a track over
+16 MB.
+
 **Covers**: a track shows its own, then its album's, then a gradient drawn from its title. The
 list uses the library's `thumb` size and the header its `medium`, so a 2 MB cover is not
 downloaded forty times to be shown at 48 pixels.
