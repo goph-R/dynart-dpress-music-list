@@ -1,0 +1,15 @@
+<?php
+/**
+ * The editor of a track or of an album - the admin's own form body, and nothing added to it
+ *
+ * Expects: $title, $form, $back_url.
+ */
+?>
+<?php $this->useLayout($admin_layout) ?>
+<?php $this->startBlock('content') ?>
+    <?= $this->fetch('dpress_admin:form', [
+        'title'    => $title,
+        'form'     => $form,
+        'back_url' => $back_url,
+    ]) ?>
+<?php $this->endBlock() ?>

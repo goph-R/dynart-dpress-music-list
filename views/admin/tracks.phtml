@@ -1,0 +1,36 @@
+<?php
+/**
+ * The Tracks tab of the Music section - see `MusicAdminController::tracks()`
+ *
+ * Expects: $new_url, $tabs, $albums (id => title), $list_id, $list_config.
+ */
+$filters = '<input type="search" name="search" placeholder="Search...">';
+if (!empty($albums)) {
+    $filters .= '<select name="album_id" aria-label="Album"><option value="">Every album</option>';
+    foreach ($albums as $albumId => $albumTitle) {
+        $filters .= '<option value="'.esc_attr((string)$albumId).'">'.esc_html($albumTitle).'</option>';
+    }
+    $filters .= '</select>';
+}
+?>
+<?php $this->useLayout($admin_layout) ?>
+<?php $this->startBlock('content') ?>
+    <div class="page-head">
+        <h1>Music</h1>
+        <span class="spacer"></span>
+        <a class="button primary with-icon" href="<?= esc_attr($new_url) ?>"><?= \Dynart\Dpress\Dpress::icon('plus') ?> New track</a>
+    </div>
+    <?= $this->fetch('dpress_admin:tabs', ['tabs' => $tabs ?? [], 'label' => 'Music']) ?>
+
+    <div class="panel flush">
+        <?= $this->fetch('dpress_admin:list', [
+            'list_id'     => $list_id,
+            'list_config' => $list_config,
+            'filters'     => $filters,
+        ]) ?>
+    </div>
+    <p class="form-description">
+        The player goes wherever <code>{{ music_list() }}</code> is written - on a page of its own,
+        usually. <code>{{ music_list(album='a-slug') }}</code> lists one album.
+    </p>
+<?php $this->endBlock() ?>

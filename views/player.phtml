@@ -1,0 +1,114 @@
+<?php
+/**
+ * The player - what `{{ music_list() }}` becomes
+ *
+ * **Readable before any script runs**: each row is a title, a date and a download link. The
+ * now-playing header, the sort select and the transport are `hidden` until `music-list.js` has
+ * bound the player, because a Play button that does nothing is worse than no button.
+ *
+ * Everything the script needs about a track is on its row as `data-` attributes - it reads the
+ * list it was given rather than asking for another one. Nothing is found by id, so two players on
+ * one page are two players.
+ *
+ * A theme may override this file like any template: `music_list/player.phtml` in the theme.
+ *
+ * Expects: $tracks (see `MusicService::playlist()`), $sort, $dates.
+ */
+$sorts = [
+    'created-desc' => 'Newest first',
+    'created-asc'  => 'Oldest first',
+    'title-asc'    => 'Title (A-Z)',
+    'title-desc'   => 'Title (Z-A)',
+];
+?>
+<section class="music-list" data-music-list data-sort="<?= esc_attr($sort) ?>" aria-label="Music player">
+    <div class="ml-backdrop" data-ml-backdrop aria-hidden="true"></div>
+
+    <?php if (empty($tracks)): ?>
+        <p class="ml-empty">There is no music here yet.</p>
+    <?php else: ?>
+        <header class="ml-now" data-ml-now hidden>
+            <img class="ml-now-cover" data-ml-cover alt="">
+            <div class="ml-now-meta">
+                <p class="ml-now-title">
+                    <span data-ml-title>Nothing playing</span>
+                    <span class="ml-album" data-ml-album hidden></span>
+                </p>
+                <canvas class="ml-visualizer" data-ml-visualizer width="320" height="48" aria-hidden="true"></canvas>
+            </div>
+        </header>
+
+        <div class="ml-toolbar" data-ml-toolbar hidden>
+            <label>
+                <span class="ml-toolbar-label">Sort by</span>
+                <select class="ml-sort" data-ml-sort>
+                    <?php foreach ($sorts as $value => $label): ?>
+                        <option value="<?= esc_attr($value) ?>"<?= $value === $sort ? ' selected' : '' ?>><?= esc_html($label) ?></option>
+                    <?php endforeach ?>
+                </select>
+            </label>
+        </div>
+
+        <ol class="ml-tracks" data-ml-tracks>
+            <?php foreach ($tracks as $track): ?>
+                <li class="ml-track" data-ml-track
+                    data-id="<?= esc_attr($track['id']) ?>"
+                    data-title="<?= esc_attr($track['title']) ?>"
+                    data-url="<?= esc_attr($track['url']) ?>"
+                    data-cover="<?= esc_attr($track['cover']) ?>"
+                    data-cover-large="<?= esc_attr($track['cover_large']) ?>"
+                    data-album="<?= esc_attr($track['album']) ?>"
+                    data-released="<?= esc_attr($dates->iso($track['released_at'])) ?>">
+                    <img class="ml-thumb" data-ml-thumb alt=""<?php if ($track['cover'] !== ''): ?> src="<?= esc_attr($track['cover']) ?>" loading="lazy"<?php endif ?>>
+                    <span class="ml-track-main">
+                        <span class="ml-track-titleline">
+                            <span class="ml-track-title"><?= esc_html($track['title']) ?></span>
+                            <?php if ($track['album'] !== ''): ?>
+                                <span class="ml-album">&mdash; <?= esc_html($track['album']) ?></span>
+                            <?php endif ?>
+                        </span>
+                        <?php if (!empty($track['released_at'])): ?>
+                            <?= $dates->tag($track['released_at'], '', 'ml-track-date') ?>
+                        <?php endif ?>
+                    </span>
+                    <button type="button" class="ml-button ml-share" data-ml-share aria-label="Share <?= esc_attr($track['title']) ?>" title="Share" hidden>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+                    </button>
+                    <a class="ml-button ml-download" data-ml-download href="<?= esc_attr($track['url']) ?>" download="<?= esc_attr($track['file']) ?>" aria-label="Download <?= esc_attr($track['title']) ?>" title="Download">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    </a>
+                </li>
+            <?php endforeach ?>
+        </ol>
+
+        <footer class="ml-controls" data-ml-controls hidden>
+            <div class="ml-transport">
+                <span class="ml-transport-side"></span>
+                <span class="ml-transport-main">
+                    <button type="button" class="ml-button" data-ml-prev aria-label="Previous">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6z"/><path d="M20 6v12L9 12z"/></svg>
+                    </button>
+                    <button type="button" class="ml-button ml-main" data-ml-play aria-label="Play">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                    <button type="button" class="ml-button" data-ml-next aria-label="Next">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6l11 6-11 6z"/><path d="M16 6h2v12h-2z"/></svg>
+                    </button>
+                </span>
+                <span class="ml-transport-side ml-transport-right">
+                    <button type="button" class="ml-button" data-ml-shuffle aria-label="Shuffle" aria-pressed="false" title="Shuffle">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+                    </button>
+                </span>
+            </div>
+            <div class="ml-seek">
+                <span class="ml-time" data-ml-current>0:00</span>
+                <input class="ml-seek-slider" data-ml-seek type="range" min="0" max="100" value="0" step="0.1" aria-label="Seek">
+                <span class="ml-time" data-ml-duration>0:00</span>
+            </div>
+        </footer>
+
+        <div class="ml-toast" data-ml-toast role="status" aria-live="polite"></div>
+        <audio data-ml-audio preload="metadata"></audio>
+    <?php endif ?>
+</section>

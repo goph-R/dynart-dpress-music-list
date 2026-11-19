@@ -1,0 +1,24 @@
+<?php
+/**
+ * The Albums tab of the Music section - see `MusicAdminController::albums()`
+ *
+ * Expects: $new_url, $tabs, $list_id, $list_config.
+ */
+?>
+<?php $this->useLayout($admin_layout) ?>
+<?php $this->startBlock('content') ?>
+    <div class="page-head">
+        <h1>Music</h1>
+        <span class="spacer"></span>
+        <a class="button primary with-icon" href="<?= esc_attr($new_url) ?>"><?= \Dynart\Dpress\Dpress::icon('plus') ?> New album</a>
+    </div>
+    <?= $this->fetch('dpress_admin:tabs', ['tabs' => $tabs ?? [], 'label' => 'Music']) ?>
+
+    <div class="panel flush">
+        <?= $this->fetch('dpress_admin:list', [
+            'list_id'     => $list_id,
+            'list_config' => $list_config,
+            'filters'     => '<input type="search" name="search" placeholder="Search...">',
+        ]) ?>
+    </div>
+<?php $this->endBlock() ?>

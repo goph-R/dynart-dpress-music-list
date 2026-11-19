@@ -1,0 +1,83 @@
+<?php
+/**
+ * Template Name: Music player, full window
+ *
+ * A page that is the player and nothing around it: no site header, no sidebar, the list scrolling
+ * with the window while the now-playing header and the transport stay at its edges - what the
+ * standalone MusicList looked like. Chosen in the page editor's *Template* select, for a page
+ * with `{{ music_list() }}` on it.
+ *
+ * **A document of its own and not the theme's layout**, because the theme's layout is exactly
+ * what this leaves out. It still ends in `</head>`, which is where dpress puts the page's assets
+ * - the player's stylesheet and script among them - and the site's own stylesheet.
+ *
+ * The few rules in here are the page's and not the player's: they are inline so the page is dark
+ * from its first byte, rather than white until `music-list.css` arrives.
+ *
+ * A theme answers this with `dpress/content/page-template-music-player.phtml`.
+ *
+ * Expects what `dpress:content/page` gets: $content, $body_html, $show_lead, $site_name, $site_icon,
+ * $preview.
+ */
+$siteName = (string)($site_name ?? '');
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title><?= esc_html($content->title.($siteName !== '' ? ' – '.$siteName : '')) ?></title>
+    <?php if (!empty($site_icon)): ?>
+        <link rel="icon" href="<?= esc_attr($site_icon) ?>">
+    <?php endif ?>
+    <style>
+        html { background: #0c0d12; }
+        body.music-list-page {
+            margin: 0; min-height: 100vh; min-height: 100dvh;
+            display: flex; flex-direction: column;
+            background: #0c0d12; color: #f2f3f7;
+            font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        }
+        .music-list-page .mlp-bar {
+            display: flex; align-items: baseline; gap: 12px;
+            padding: 10px max(16px, calc((100% - 860px) / 2));
+            font-size: 0.9rem;
+        }
+        .music-list-page .mlp-bar a, .music-list-page .mlp-bar a:visited { color: #9aa0ad; text-decoration: none; }
+        .music-list-page .mlp-bar a:hover { color: #f2f3f7; }
+        .music-list-page .mlp-bar h1 { margin: 0; font-size: inherit; font-weight: 600; }
+        .music-list-page .mlp-body { flex: 1; display: flex; flex-direction: column; }
+        /* whatever else the page says, above or below the player */
+        .music-list-page .mlp-body > :not(.music-list) {
+            margin-left: max(16px, calc((100% - 860px) / 2));
+            margin-right: max(16px, calc((100% - 860px) / 2));
+        }
+        .music-list-page .mlp-body > :not(.music-list) a { color: #6ea8fe; }
+        /* the player, from a rounded panel in a column to the page itself */
+        .music-list-page .music-list { flex: 1; margin: 0; border-radius: 0; }
+        .music-list-page .music-list .ml-now,
+        .music-list-page .music-list .ml-toolbar,
+        .music-list-page .music-list .ml-tracks,
+        .music-list-page .music-list .ml-controls {
+            padding-left: max(16px, calc((100% - 860px) / 2));
+            padding-right: max(16px, calc((100% - 860px) / 2));
+        }
+    </style>
+</head>
+<body class="music-list-page">
+<?= $this->fetch('dpress:content/preview-bar', ['preview' => $preview ?? false]) ?>
+<div class="mlp-bar">
+    <?php if ($siteName !== ''): ?>
+        <a href="<?= esc_attr(route_url('/')) ?>">&larr; <?= esc_html($siteName) ?></a>
+    <?php endif ?>
+    <h1><?= esc_html($content->title) ?></h1>
+</div>
+<main class="mlp-body">
+    <?php // the lead as well: a page with no separator in it is *all* lead, and that is what a
+          // page holding one shortcode is ?>
+    <?php if ($show_lead ?? true): ?><?= $content->lead_html ?><?php endif ?>
+    <?= $body_html ?? $content->body_html ?>
+</main>
+</body>
+</html>
