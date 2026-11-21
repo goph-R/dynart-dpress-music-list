@@ -209,6 +209,15 @@ function order(root) {
     return root.querySelector('[data-ml-tracks]').children.map(element => element.dataset.id);
 }
 
+/** A random source that gives the same answers every run */
+function seeded(seed) {
+    let state = seed;
+    return () => {
+        state = (state * 1103515245 + 12345) % 2147483648;
+        return state / 2147483648;
+    };
+}
+
 function queueOf(ids, random) {
     return new Queue(ids.map((id, index) => ({id: id, title: id, released: 100 - index})), random);
 }
@@ -307,24 +316,96 @@ const tests = {
         assert.strictEqual(queue.current, 1, 'and the queue has not moved');
     },
 
-    'shuffle never picks the track that is playing'() {
-        // a random source stuck on the current index, then moving on
-        const answers = [0.4, 0.4, 0.9];
-        const queue = queueOf(['a', 'b', 'c'], () => answers.shift());
+    'shuffle plays every track once before any comes round again'() {
+        const queue = queueOf(['a', 'b', 'c', 'd', 'e'], seeded(7));
         queue.select(1);
-        queue.shuffle = true;
-        assert.strictEqual(queue.next(), 2);
+        queue.setShuffle(true);
+        const round = [1, queue.next(), queue.next(), queue.next(), queue.next()];
+        assert.deepStrictEqual(round.slice().sort(), [0, 1, 2, 3, 4]);
+        const again = [queue.next(), queue.next(), queue.next(), queue.next(), queue.next()];
+        assert.deepStrictEqual(again.slice().sort(), [0, 1, 2, 3, 4], 'and the round after has them all');
+    },
+
+    // the seam between two rounds is where a repeat could slip in
+    'shuffle never plays a track twice in a row'() {
+        for (let seed = 1; seed <= 50; seed++) {
+            const queue = queueOf(['a', 'b', 'c'], seeded(seed));
+            queue.shuffle = true;
+            let before = queue.next();
+            for (let step = 0; step < 30; step++) {
+                const index = queue.next();
+                assert.notStrictEqual(index, before, 'seed ' + seed + ', step ' + step);
+                before = index;
+            }
+        }
     },
 
     'previous goes back through a shuffled order'() {
-        const answers = [0.9, 0.1];
-        const queue = queueOf(['a', 'b', 'c'], () => answers.shift());
+        const queue = queueOf(['a', 'b', 'c', 'd'], seeded(3));
         queue.select(1);
         queue.shuffle = true;
-        queue.next();   // to 2
-        queue.next();   // to 0
-        assert.strictEqual(queue.previous(0), 2);
+        const first = queue.next();
+        queue.next();
+        assert.strictEqual(queue.previous(0), first);
         assert.strictEqual(queue.previous(0), 1);
+    },
+
+    'next goes forward again through what previous stepped back from'() {
+        const queue = queueOf(['a', 'b', 'c', 'd', 'e'], seeded(3));
+        queue.select(0);
+        queue.shuffle = true;
+        const played = [queue.next(), queue.next(), queue.next()];
+        queue.previous(0);
+        queue.previous(0);
+        assert.strictEqual(queue.next(), played[1]);
+        assert.strictEqual(queue.next(), played[2]);
+        const fresh = queue.next();
+        assert.ok([0].concat(played).indexOf(fresh) === -1, 'and then on with the round');
+    },
+
+    'choosing a track lets go of the way forward'() {
+        const queue = queueOf(['a', 'b', 'c', 'd', 'e'], seeded(3));
+        queue.select(0);
+        queue.shuffle = true;
+        queue.next();
+        queue.next();
+        queue.previous(0);
+        queue.select(queue.current);   // what the player does after every step: no new direction
+        assert.strictEqual(queue.ahead.length, 1);
+        queue.select(queue.current === 4 ? 3 : 4);
+        assert.deepStrictEqual(queue.ahead, []);
+    },
+
+    'a track chosen while shuffling is not played again that round'() {
+        const queue = queueOf(['a', 'b', 'c', 'd', 'e'], seeded(11));
+        queue.select(0);
+        queue.shuffle = true;
+        const first = queue.next();
+        const chosen = [1, 2, 3, 4].filter(index => index !== first)[0];
+        queue.select(chosen);
+        const rest = [queue.next(), queue.next()];
+        assert.deepStrictEqual([0, first, chosen].concat(rest).sort(), [0, 1, 2, 3, 4]);
+    },
+
+    'turning shuffle on again starts a new round'() {
+        const queue = queueOf(['a', 'b', 'c', 'd'], seeded(5));
+        queue.select(0);
+        queue.setShuffle(true);
+        queue.next();
+        queue.setShuffle(false);
+        queue.setShuffle(true);
+        queue.next();
+        assert.strictEqual(queue.upcoming.length, 2, 'everything but the one playing was dealt');
+    },
+
+    'sorting keeps the round of a shuffle'() {
+        const queue = queueOf(['a', 'b', 'c', 'd', 'e'], seeded(9));
+        queue.select(0);
+        queue.shuffle = true;
+        queue.next();
+        const owed = queue.upcoming.map(index => queue.tracks[index].id).sort();
+        queue.sort('created-asc');
+        assert.deepStrictEqual(queue.upcoming.map(index => queue.tracks[index].id).sort(), owed);
     },
 
     'shuffling a list of one plays the one'() {

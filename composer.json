@@ -2,7 +2,7 @@
     "name": "dynart/dpress-music-list",
     "description": "A music player for dpress: tracks from the media library, with covers, albums and share links.",
     "type": "dpress-plugin",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "license": "MIT",
     "minimum-stability": "dev",
     "prefer-stable": true,

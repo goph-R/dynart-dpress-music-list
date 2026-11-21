@@ -133,6 +133,10 @@
         this.shuffle = false;
         /** indexes already visited, so Previous goes back through a shuffled order too */
         this.history = [];
+        /** indexes Previous stepped back from, so Next goes forward through them again */
+        this.ahead = [];
+        /** indexes still to come in this round of shuffling; `null` until a round is dealt */
+        this.upcoming = null;
         this.random = random || Math.random;
     }
 
@@ -149,40 +153,102 @@
         return -1;
     };
 
-    /** Makes a track current without it counting as a step - a click on a row, a deep link */
+    /**
+     * Makes a track current without it counting as a step - a click on a row, a deep link
+     *
+     * Choosing another track is a new direction, so what Previous stepped back from is let go.
+     */
     Queue.prototype.select = function (index) {
         if (index < 0 || index >= this.tracks.length) {
             return false;
         }
-        this.current = index;
+        if (index !== this.current) {
+            this.ahead = [];
+        }
+        this.arrive(index);
         return true;
     };
 
-    /** A track other than the current one, when there is another */
-    Queue.prototype.randomIndex = function () {
-        var length = this.tracks.length;
-        if (length <= 1) {
-            return 0;
+    /** Makes an index current. A track that is playing is not owed again this round. */
+    Queue.prototype.arrive = function (index) {
+        this.current = index;
+        if (this.upcoming) {
+            var at = this.upcoming.indexOf(index);
+            if (at !== -1) {
+                this.upcoming.splice(at, 1);
+            }
         }
-        var index;
-        do {
-            index = Math.floor(this.random() * length);
-        } while (index === this.current);
-        return index;
     };
 
-    /** Steps forward - the row below, round to the top, or anywhere else when shuffling */
+    /** Turns shuffling on or off. Turning it on starts a round afresh. */
+    Queue.prototype.setShuffle = function (on) {
+        this.shuffle = !!on;
+        this.upcoming = null;
+    };
+
+    /**
+     * Deals a round: every track once, in a random order
+     *
+     * The first round leaves out the track that is playing, which has had its turn. A later
+     * round has them all, and only makes sure it does not open with the track that closed the
+     * one before.
+     */
+    Queue.prototype.deal = function () {
+        var first = this.upcoming === null;
+        var order = [];
+        var i, j, held;
+        for (i = 0; i < this.tracks.length; i++) {
+            if (!(first && i === this.current)) {
+                order.push(i);
+            }
+        }
+        for (i = order.length - 1; i > 0; i--) {
+            j = Math.floor(this.random() * (i + 1));
+            held = order[i];
+            order[i] = order[j];
+            order[j] = held;
+        }
+        // the round is played from the end
+        var last = order.length - 1;
+        if (last > 0 && order[last] === this.current) {
+            order[last] = order[0];
+            order[0] = this.current;
+        }
+        this.upcoming = order;
+    };
+
+    /** The next track of the round, dealing a new round when this one has run out */
+    Queue.prototype.shuffledIndex = function () {
+        if (this.tracks.length <= 1) {
+            return 0;
+        }
+        if (!this.upcoming || !this.upcoming.length) {
+            this.deal();
+        }
+        return this.upcoming.pop();
+    };
+
+    /**
+     * Steps forward - the row below and round to the top, or the next of the round when shuffling
+     *
+     * Shuffling, what Previous stepped back from comes first, so going back and forth plays the
+     * same tracks. In order, forward is always the row below, and that way is let go.
+     */
     Queue.prototype.next = function () {
         if (!this.tracks.length) {
             return -1;
         }
-        var index = this.shuffle
-            ? this.randomIndex()
-            : (this.current === -1 ? 0 : (this.current + 1) % this.tracks.length);
+        var index;
+        if (this.shuffle) {
+            index = this.ahead.length ? this.ahead.pop() : this.shuffledIndex();
+        } else {
+            this.ahead = [];
+            index = this.current === -1 ? 0 : (this.current + 1) % this.tracks.length;
+        }
         if (this.current !== -1) {
             this.history.push(this.current);
         }
-        this.current = index;
+        this.arrive(index);
         return index;
     };
 
@@ -201,18 +267,20 @@
             return Queue.RESTART;
         }
         if (this.history.length) {
-            this.current = this.history.pop();
+            this.ahead.push(this.current);
+            this.arrive(this.history.pop());
             return this.current;
         }
-        this.current = this.current <= 0 ? this.tracks.length - 1 : this.current - 1;
+        this.arrive(this.current <= 0 ? this.tracks.length - 1 : this.current - 1);
         return this.current;
     };
 
     /**
      * Puts the tracks in another order, keeping hold of the one that is playing
      *
-     * The current track is found again by id, since its index has moved. The history is dropped:
-     * it is a list of indexes, and they no longer name the tracks they did.
+     * The current track is found again by id, since its index has moved. The history, both ways,
+     * is dropped: it is a list of indexes, and they no longer name the tracks they did. The round
+     * of a shuffle is kept, so sorting does not bring back tracks already heard.
      */
     Queue.prototype.sort = function (name) {
         var compare = MusicList.comparators[name];
@@ -220,6 +288,7 @@
             return false;
         }
         var playing = this.track();
+        var owed = this.upcoming && this.upcoming.map(function (index) { return this.tracks[index]; }, this);
         // the index breaks a tie, so tracks with the same date keep the order they were given
         // in - and sorting twice is the same as sorting once
         this.tracks = this.tracks
@@ -228,6 +297,10 @@
             .map(function (entry) { return entry.track; });
         this.current = playing ? this.indexOf(playing.id) : -1;
         this.history = [];
+        this.ahead = [];
+        if (owed) {
+            this.upcoming = owed.map(function (track) { return this.tracks.indexOf(track); }, this);
+        }
         return true;
     };
 
@@ -485,7 +558,7 @@
         }
 
         function toggleShuffle() {
-            queue.shuffle = !queue.shuffle;
+            queue.setShuffle(!queue.shuffle);
             els.shuffle.setAttribute('aria-pressed', String(queue.shuffle));
         }
 
