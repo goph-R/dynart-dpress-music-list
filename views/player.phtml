@@ -22,7 +22,7 @@ $sorts = [
 ];
 ?>
 <section class="music-list" data-music-list data-sort="<?= esc_attr($sort) ?>" aria-label="Music player">
-    <div class="ml-backdrop" data-ml-backdrop aria-hidden="true"></div>
+    <div class="ml-backdrop" aria-hidden="true"><div class="ml-backdrop-cover" data-ml-backdrop></div></div>
 
     <?php if (empty($tracks)): ?>
         <p class="ml-empty">There is no music here yet.</p>

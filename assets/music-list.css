@@ -49,17 +49,28 @@
 
 /* ---- the blurred cover behind everything ---- */
 
+/* The size of the player, and there only to hold the cover: the cover itself is the size of the
+   window and stays where it is while the list scrolls past, so a long list does not stretch it. */
 .music-list .ml-backdrop {
     position: absolute;
-    inset: -10%;
+    inset: 0;
     z-index: -1;
+    pointer-events: none;
+}
+/* A tenth larger than the window on every side, so the blur's faded edge is out of sight - the
+   player clips what is outside it. The bottom margin lets it reach as far past the player's
+   end as the top one does past its start. */
+.music-list .ml-backdrop-cover {
+    position: sticky;
+    top: -10vh;
+    height: 120vh;
+    margin: -10vh -10%;
     background-size: cover;
     background-position: center;
     filter: blur(48px) brightness(0.42) saturate(1.1);
     transition: background-image 0.4s ease;
-    pointer-events: none;
 }
-.music-list .ml-backdrop::after {
+.music-list .ml-backdrop-cover::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -436,5 +447,5 @@
 
 @media (prefers-reduced-motion: reduce) {
     .music-list *,
-    .music-list .ml-backdrop { transition: none; }
+    .music-list .ml-backdrop-cover { transition: none; }
 }
